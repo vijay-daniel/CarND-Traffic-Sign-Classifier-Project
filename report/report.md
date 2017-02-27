@@ -19,14 +19,12 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/visualization.jpg "Visualization"
-[image2]: ./examples/grayscale.jpg "Grayscaling"
-[image3]: ./examples/random_noise.jpg "Random Noise"
-[image4]: ./examples/placeholder.png "Traffic Sign 1"
-[image5]: ./examples/placeholder.png "Traffic Sign 2"
-[image6]: ./examples/placeholder.png "Traffic Sign 3"
-[image7]: ./examples/placeholder.png "Traffic Sign 4"
-[image8]: ./examples/placeholder.png "Traffic Sign 5"
+[orig-ghn]: ./orig-ghn.png "Original Image"
+[ghn]: ./ghn.png "Gray/Histogram Equalized/Normalized"
+[before-pre]: ./before-pre.png "Before Preprocessing"
+[after-pre]: ./after-pre.png "After Preprocessing (Normalized)"
+[classes-dist]: ./classes-dist.png "Classes Distribution"
+[web-images]: ./web-images.png "Web Images"
 
 ## Rubric Points
 ###Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/481/view) individually and describe how I addressed each point in my implementation.  
@@ -58,11 +56,12 @@ The code for this step is contained in the 4th code cell of the IPython notebook
 
 Here is an exploratory visualization of the data set. It is a bar chart showing how the many samples are present for each output class in the training and validation sets.
 
-![alt text][image1]
+![classes-dist]
 
 This section also compares the grayscale, histogram equalized and normalized transformations of a random training image. The observation here is that the normalized image
 
-
+![orig-ghn]
+![ghn]
 
 ###Design and Test a Model Architecture
 
@@ -72,11 +71,13 @@ The code for this step is contained in the 5th code cell of the IPython notebook
 
 As a first step, I decided to convert the images to grayscale because the features that describe a sign are independent of colour. So, we do not need the additional colour information and can instead let the network look at the other aspects of the image without using up its weights for recognizing colour features.
 
-Here is an example of a traffic sign image before and after grayscaling.
-
-![alt text][image2]
-
 As a last step, I normalized the image data because ...
+
+
+Here is an example of a traffic sign image before and after preprocessing.
+
+![before-pre]
+![after-pre]
 
 I did a few training runs with the histogram equalized version of the image, but the normalized versions showed better results in general. There were certain cases where the histogram equalized version gave a better visual representation than the normalized image.
 
@@ -129,17 +130,39 @@ The code for calculating the accuracy of the model is located in the ninth cell 
 
 My final model results were:
 
-* training set accuracy of ?
-* validation set accuracy of ? 
-* test set accuracy of ?
+* training set accuracy of 99.9%
+* validation set accuracy of 97.2%
+* test set accuracy of 95.1%
+
+
+The process of tweaking the architecture was equally fun and frustrating :)
+
 
 My first architecture was LeNet-5 without any preprocessing of the image. This converged to an accuracy of around 85% on the validation set. After converting the image to grayscale and normalizing it, the same architecture converged to an accuracy of around 93% on the validation set.
 
-Based on the premise that traffic signs contain far more features that need to be "remembered" and "recalled" as opposed to the MNIST data set, I decided to start tweaking the LeNet architecture. During this tweaking, I realized I was making frequent errors while calculating the size of the transformed images as it flowed through an architecture. So, I wrote a simple pipeline to simplify the specification of an architecture and also help me in experimenting quickly with various architectures. An example architecture written using this pipeline looks like the following:
+Based on the premise that traffic signs contain far more features that need to be "remembered" and "recalled" as opposed to the MNIST data set, I decided to start tweaking the LeNet architecture. During this tweaking, I realized I was making frequent errors while calculating the size of the transformed images as it flowed through an architecture. So, I built a simple pipeline framework to simplify the specification of an architecture and also help me in experimenting quickly with various architectures. The calculation of sizes is done automatically with some sane defaults. The code for the pipeline framework can be seen in the 7th code cell in the IPython noteboo. An example architecture written using this pipeline looks like the following:
 
-TODO: Simple pipeline
+``` 
+def pipeline_sample(x):
+    return run_pipeline(x, image_shape, #Input: 32x32xD
+    [
+        convp(3, 3, 1, "CLayer1"), # 30x30x3
+        convp(5, 6, 1, "CLayer2"), # 26x26x6
+        max_poolp(2, 2), # 13x13x6
+        convp(6, 18, 1, "CLayer3"), # 8x8x18
+        max_poolp(2, 2), # 4x4x18
+        local_flattenp(), # 288
+        fcp(164),
+        fcp(101),
+        dropoutp(),
+        fcp(n_classes, False) # 43, Don't apply RELU here
+    ])   
+```
 
-Even though these architectures were not as deep as others, adding dropout did help in increasing the accuracy, typically, by around 3-4%.
+
+Even though these architectures were not as deep as others, adding dropout did help in increasing the accuracy, typically, by around 3-4%. After experimenting with various dropout values, I settled on 0.5 as the keep probability. Values less than this (0.3, 0.4) resulted in underfitting and very slow training. Values above this (0.7, 0.8) resulted in overfitting and lower accuracies than a value of 0.5.
+
+I tried giving high batch sizes like 1024 and 2048. However, this caused the accuracy to drop to the order of 5-10%. My suspicion is that the big batch size started causing overfitting. Interestingly, a batch size of 128 seemed to be just right. I don't know the reasons behind why this number is right, but empirically, this gave better results than the other bigger batch sizes I tried.
 
 This classic case of image classification falls right into the stronghold of CNNs. I tested various filter sizes for the convolution. I observed that the smaller the filter size, the finer the nature of the features understood by that layer. I verified this using Tensorboard visualizations.
 
@@ -163,8 +186,10 @@ If a well known architecture was chosen:
 
 Here are five German traffic signs that I found on the web:
 
-![alt text][image4] ![alt text][image5] ![alt text][image6] 
-![alt text][image7] ![alt text][image8]
+![web-images]
+
+and here are their classifications:
+[27-Pedestrians], [18-General caution], [2-Speed limit (50km/h)], [13-Yield], [1-Speed limit (30km/h)]
 
 The first image might be difficult to classify because ...
 
